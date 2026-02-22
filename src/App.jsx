@@ -5,6 +5,7 @@ import Upload from "./Pages/Upload.jsx"
 import MyFiles from "./Pages/MyFiles.jsx"
 import Subscription from "./Pages/Subscription.jsx"
 import Transactions from "./Pages/Transactions.jsx"
+import PublicFileView from "./Pages/PublicFileView.jsx";
 import {RedirectToSignIn, SignedIn, SignedOut} from "@clerk/clerk-react";
 import {Toaster} from 'react-hot-toast'
 import { UserCreditsProvider } from './Context/UserCreditsContext.jsx';
@@ -46,6 +47,11 @@ const App=()=>{
                             <SignedOut><RedirectToSignIn /></SignedOut>
                         </>
                     } />
+                    <Route path="file/:fileId" element={
+                        <>
+                        <PublicFileView/>
+                        </>
+                    }/>
                     
                     <Route path="/*" element={<RedirectToSignIn />} />
         </Routes>
