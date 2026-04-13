@@ -60,8 +60,7 @@ public class FileController {
     @GetMapping("/download/{id}")
     public ResponseEntity<Resource> download(@PathVariable String id) throws IOException {
         FileMetadataDTO downloadableFile = fileMetadataService.getDownloadableFile(id);
-        Path path = Paths.get(downloadableFile.getFileLocation());
-        Resource resource = new UrlResource(path.toUri());
+        Resource resource = fileMetadataService.getFileResource(downloadableFile.getFileLocation());
         return ResponseEntity.ok()
                 .contentType(MediaType.APPLICATION_OCTET_STREAM)
                 .header(HttpHeaders.CONTENT_DISPOSITION,"attachment; filename = \"" + downloadableFile.getName()+"\"")

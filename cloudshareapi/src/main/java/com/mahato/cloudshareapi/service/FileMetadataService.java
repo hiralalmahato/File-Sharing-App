@@ -18,8 +18,14 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 import java.util.stream.Collectors;
+
+import org.bson.types.ObjectId;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.data.mongodb.gridfs.GridFsResource;
+import org.springframework.data.mongodb.gridfs.GridFsTemplate;
+import com.mongodb.client.gridfs.model.GridFSFile;
 
 @Service
 @RequiredArgsConstructor
@@ -27,8 +33,9 @@ public class FileMetadataService {
 
 
     private final ProfileService profileService;
-    private  final UserCreditsService userCreditsService;
+    private final UserCreditsService userCreditsService;
     private final FileMetadataRepository fileMetadataRepository;
+    private final GridFsTemplate gridFsTemplate;
 
     public List<FileMetadataDTO> uploadFiles(MultipartFile files[]) throws IOException {
         ProfileDocument currentProfile = profileService.getCurrentProfile();
@@ -37,16 +44,12 @@ public class FileMetadataService {
         if(!userCreditsService.hasEnoughCredits(files.length)){
              throw new RuntimeException("Not Enough Credits to upload files please purchase more credits");
         }
-        Path uploadPath = Paths.get("upload").toAbsolutePath().normalize();
-        Files.createDirectories(uploadPath);
 
         for (MultipartFile file : files){
-            String fileName = UUID.randomUUID()+"."+ StringUtils.getFilenameExtension(file.getOriginalFilename());
-            Path targetLocation = uploadPath.resolve(fileName);
-            Files.copy(file.getInputStream(),targetLocation, StandardCopyOption.REPLACE_EXISTING);
+            ObjectId fileId = gridFsTemplate.store(file.getInputStream(), file.getOriginalFilename(), file.getContentType());
 
             FileMetadataDocument fileMetaData = FileMetadataDocument.builder()
-                    .fileLocation(targetLocation.toString())
+                    .fileLocation(fileId.toString())
                     .name(file.getOriginalFilename())
                     .size(file.getSize())
                     .type(file.getContentType())
@@ -104,8 +107,11 @@ public class FileMetadataService {
                 throw new RuntimeException("File is not belong to current user");
             }
 
-            Path filePath = Paths.get(file.getFileLocation());
-            Files.deleteIfExists(filePath);
+            try {
+                gridFsTemplate.delete(new Query(Criteria.where("_id").is(file.getFileLocation())));
+            } catch (Exception ex) {
+                // Ignore if it doesn't exist
+            }
 
             fileMetadataRepository.deleteById(id);
         }catch(Exception e){
@@ -121,5 +127,13 @@ public class FileMetadataService {
         file.setIsPublic(!file.getIsPublic());
         fileMetadataRepository.save(file);
         return mapToDTO(file);
+    }
+
+    public GridFsResource getFileResource(String gridFsId) {
+        GridFSFile file = gridFsTemplate.findOne(new Query(Criteria.where("_id").is(gridFsId)));
+        if (file == null) {
+            throw new RuntimeException("File not found in MongoDB GridFS");
+        }
+        return gridFsTemplate.getResource(file);
     }
 }
