@@ -1,5 +1,5 @@
 
-const BASE_URL = (import.meta.env.VITE_API_URL || "http://localhost:8080/api/v1.0").replace(/\/+$/, "");
+const BASE_URL = (import.meta.env.VITE_API_URL || "http://localhost:8080").replace(/\/+$/, "");
 
 export const apiEndpoints = {
     FETCH_FILES: `${BASE_URL}/files/my`,

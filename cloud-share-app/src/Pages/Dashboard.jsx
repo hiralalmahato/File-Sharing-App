@@ -99,8 +99,7 @@ const Dashboard = () => {
             const token = await getToken();
             const response = await axios.post(apiEndpoints.UPLOAD_FILE, formData, {
                 headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'multipart/form-data'
+                    'Authorization': `Bearer ${token}`
                 }
             });
 
