@@ -26,7 +26,13 @@ const Dashboard = () => {
                 const res = await axios.get(apiEndpoints.FETCH_FILES);
 
                 // Sort by uploadedAt and take only the 5 most recent files
-                const sortedFiles = res.data.sort((a, b) =>
+                const normalizedFiles = res.data.map((file) => ({
+                    ...file,
+                    fileName: file.fileName || file.name || "Unnamed file",
+                    url: file.url || file.fileLocation || ""
+                }));
+
+                const sortedFiles = normalizedFiles.sort((a, b) =>
                     new Date(b.uploadedAt) - new Date(a.uploadedAt)
                 ).slice(0, 5);
                 setFiles(sortedFiles);
@@ -101,7 +107,13 @@ const Dashboard = () => {
             const res = await axios.get(apiEndpoints.FETCH_FILES);
 
             // Sort by uploadedAt and take only the 5 most recent files
-            const sortedFiles = res.data.sort((a, b) =>
+            const normalizedFiles = res.data.map((file) => ({
+                ...file,
+                fileName: file.fileName || file.name || "Unnamed file",
+                url: file.url || file.fileLocation || ""
+            }));
+
+            const sortedFiles = normalizedFiles.sort((a, b) =>
                 new Date(b.uploadedAt) - new Date(a.uploadedAt)
             ).slice(0, 5);
 

@@ -6,17 +6,16 @@ import {
     Lock,
     Trash2
 } from "lucide-react";
-import {useNavigate} from "react-router-dom";
 
-const FileListRow = ({ file, onDownload, onDelete, onTogglePublic, onShareLink, getFileIcon }) => {
-    const navigate = useNavigate();
+const FileListRow = ({ file, onDownload, onDelete, onTogglePublic, onShareLink, onViewFile, getFileIcon }) => {
+    const fileName = file.fileName || file.name || "Unnamed file";
 
     return (
         <tr key={file.id} className="hover:bg-gray-50 transition-colors">
             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-800">
                 <div className="flex items-center gap-2">
                     {getFileIcon(file)}
-                    {file.name}
+                    {fileName}
                 </div>
             </td>
             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
@@ -44,7 +43,7 @@ const FileListRow = ({ file, onDownload, onDelete, onTogglePublic, onShareLink, 
                     </button>
                     {file.isPublic && (
                         <button
-                            onClick={() => onShareLink(file.id)}
+                            onClick={() => onShareLink(file)}
                             className="flex items-center gap-2 cursor-pointer group text-blue-600">
                             <Copy size={16} />
                             <span className="group-hover:underline">Share Link</span>
@@ -71,18 +70,12 @@ const FileListRow = ({ file, onDownload, onDelete, onTogglePublic, onShareLink, 
                         </button>
                     </div>
                     <div className="flex justify-center">
-                        {file.isPublic ? (
-                            <a
-                                href={`/file/${file.id}`}
-                                title="View File"
-                                target="_blank"
-                                rel="noreferrer"
-                                className="text-gray-500 hover:text-blue-600">
-                                <Eye size={18} />
-                            </a>
-                        ) : (
-                            <span className="w-4.5"></span>
-                        )}
+                        <button
+                            onClick={() => onViewFile(file)}
+                            title="View File"
+                            className="text-gray-500 hover:text-blue-600">
+                            <Eye size={18} />
+                        </button>
                     </div>
                 </div>
             </td>

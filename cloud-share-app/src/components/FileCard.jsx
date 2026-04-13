@@ -1,11 +1,12 @@
 import {useState} from "react";
 import {Copy, Download, Eye, FileIcon, FileText, Globe, Image, Lock, Music, Trash2, Video} from "lucide-react";
 
-const FileCard = ({file, onDelete, onTogglePublic, onDownload, onShareLink}) => {
+const FileCard = ({file, onDelete, onTogglePublic, onDownload, onShareLink, onViewFile}) => {
     const [showActions, setShowActions] = useState(false);
+    const fileName = file.fileName || file.name || "Unnamed file";
 
     const getFileIcon = (file) => {
-        const extenstion = file.name.split('.').pop().toLowerCase();
+        const extenstion = (file.fileName || file.name || "").split('.').pop().toLowerCase();
 
         if (['jpg', 'jpeg', 'png', 'gif', 'svg', 'webp'].includes(extenstion)) {
             return <Image size={24} className="text-purple-500" />
@@ -63,7 +64,7 @@ const FileCard = ({file, onDelete, onTogglePublic, onDownload, onShareLink}) => 
                 <div className="flex justify-between items-start">
                     <div className="overflow-hidden">
                         <h3 title={file.name} className="font-medium text-gray-900 truncate">
-                            {file.name}
+                            {fileName}
                         </h3>
                         <p className="text-xs text-gray-500 mt-1">
                             {formatFileSize(file.size)} . {formatDate(file.uploadedAt)}
@@ -77,18 +78,19 @@ const FileCard = ({file, onDelete, onTogglePublic, onDownload, onShareLink}) => 
                 <div className="flex gap-3 w-full justify-center">
                     {file.isPublic && (
                         <button
-                            onClick={() => onShareLink(file.id)}
+                            onClick={() => onShareLink(file)}
                             title="Share Link"
                             className="p-2 cursor-pointer bg-white/90 rounded-full hover:bg-white transition-colors text-purple-500 hover:text-purple-600">
                             <Copy size={18} />
                         </button>
                     )}
 
-                    {file.isPublic && (
-                        <a href={`/file/${file.id}`} title="View File" target="_blank" rel="noreferrer" className="p-2 bg-white/90 rounded-full hover:bg-white transition-colors text-gray-700 hover:text-gray-900">
+                    <button
+                        onClick={() => onViewFile(file)}
+                        title="View File"
+                        className="p-2 bg-white/90 rounded-full hover:bg-white transition-colors text-gray-700 hover:text-gray-900">
                             <Eye size={18} />
-                        </a>
-                    )}
+                    </button>
 
                     <button
                         onClick={() => onDownload(file)}

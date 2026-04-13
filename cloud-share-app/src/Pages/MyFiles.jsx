@@ -7,7 +7,6 @@ import {useNavigate} from "react-router-dom";
 import FileCard from "../components/FileCard.jsx";
 import {apiEndpoints} from "../util/apiEndpoints.js";
 import ConfirmationDialog from "../components/ConfirmationDialog.jsx";
-import LinkShareModal from "../components/LinkShareModal.jsx";
 
 import FileListRow from "../components/FileListRow.jsx";
 
@@ -20,18 +19,17 @@ const MyFiles = () => {
         isOpen: false,
         fileId: null
     });
-    const [shareModal, setShareModal] = useState({
-        isOpen: false,
-        fileId: null,
-        link: ""
-    });
-
     //fetching the files for a logged in user
     const fetchFiles = async () => {
         try {
             const response = await axios.get(apiEndpoints.FETCH_FILES);
             if (response.status === 200) {
-                setFiles(response.data);
+                const normalizedFiles = response.data.map((file) => ({
+                    ...file,
+                    fileName: file.fileName || file.name || "Unnamed file",
+                    url: file.url || file.fileLocation || ""
+                }));
+                setFiles(normalizedFiles);
                 setLoadError("");
             }
         }catch (error) {
@@ -60,7 +58,7 @@ const MyFiles = () => {
             const url = window.URL.createObjectURL(new Blob([response.data]));
             const link = document.createElement("a");
             link.href = url;
-            link.setAttribute("download", file.name);
+            link.setAttribute("download", file.fileName || file.name || "download");
             document.body.appendChild(link);
             link.click();
             link.remove();
@@ -69,6 +67,28 @@ const MyFiles = () => {
             toast.error('Unable to download file right now.');
         }
     }
+
+    const handleViewFile = (file) => {
+        if (!file?.url) {
+            toast.error("Unable to load data");
+            return;
+        }
+        window.open(file.url, "_blank", "noopener,noreferrer");
+    };
+
+    const handleShareLink = async (file) => {
+        if (!file?.url) {
+            toast.error("Unable to load data");
+            return;
+        }
+
+        try {
+            await navigator.clipboard.writeText(file.url);
+            toast.success("Link copied!");
+        } catch (error) {
+            toast.error("Unable to copy link");
+        }
+    };
 
     //Closes the delete confirmation modal
     const closeDeleteConfirmation = () => {
@@ -84,25 +104,6 @@ const MyFiles = () => {
             isOpen: true,
             fileId
         })
-    }
-
-    //opens the share link modal
-    const openShareModal = (fileId) => {
-        const link = `${window.location.origin}/file/${fileId}`;
-        setShareModal({
-            isOpen: true,
-            fileId,
-            link
-        });
-    }
-
-    //close the share link modal
-    const closeShareModal = () => {
-        setShareModal({
-            isOpen: false,
-            fileId: null,
-            link: ""
-        });
     }
 
     //Delete a file after confirmation
@@ -128,7 +129,7 @@ const MyFiles = () => {
     }, []);
 
     const getFileIcon = (file) => {
-        const extenstion = file.name.split('.').pop().toLowerCase();
+        const extenstion = (file.fileName || file.name || "").split('.').pop().toLowerCase();
 
         if (['jpg', 'jpeg', 'png', 'gif', 'svg', 'webp'].includes(extenstion)) {
             return <Image size={24} className="text-purple-500" />
@@ -198,7 +199,8 @@ const MyFiles = () => {
                                 onDelete={openDeleteConfirmation}
                                 onTogglePublic={togglePublic}
                                 onDownload={handleDownload}
-                                onShareLink={openShareModal}
+                                onShareLink={handleShareLink}
+                                onViewFile={handleViewFile}
                             />
                         ))}
                     </div>
@@ -222,7 +224,8 @@ const MyFiles = () => {
                                         onDownload={handleDownload}
                                         onDelete={openDeleteConfirmation}
                                         onTogglePublic={togglePublic}
-                                        onShareLink={openShareModal}
+                                        onShareLink={handleShareLink}
+                                        onViewFile={handleViewFile}
                                         getFileIcon={getFileIcon}
                                     />
                                 ))}
@@ -241,14 +244,6 @@ const MyFiles = () => {
                     onConfirm={handleDelete}
                     confirmButtonClass="bg-red-600 hover:bg-red-700"
                 />
-                {/* Share link modal */}
-                <LinkShareModal
-                    isOpen={shareModal.isOpen}
-                    onClose={closeShareModal}
-                    link={shareModal.link}
-                    title="Share File"
-                />
-                
             </div>
         </DashboardLayout>
     )
