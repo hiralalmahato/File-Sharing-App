@@ -47,13 +47,14 @@ const App=()=>{
                             <SignedOut><RedirectToSignIn /></SignedOut>
                         </>
                     } />
-                    <Route path="file/:fileId" element={
+                    <Route path="/file/:fileId" element={
                         <>
                         <PublicFileView/>
                         </>
                     }/>
-                    
-                    <Route path="/*" element={<RedirectToSignIn />} />
+
+                    {/* Keep unknown routes inside SPA and avoid hard 404s on deep links. */}
+                    <Route path="*" element={<Landing />} />
         </Routes>
     </BrowserRouter>
     </UserCreditsProvider>

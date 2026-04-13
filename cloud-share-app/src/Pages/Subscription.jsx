@@ -1,6 +1,6 @@
 import DashboardLayout from "../layout/DashboardLayout.jsx";
 import {useContext, useEffect, useRef, useState} from "react";
-import {useAuth, useUser} from "@clerk/clerk-react";
+import {useUser} from "@clerk/clerk-react";
 import {UserCreditsContext} from "../Context/UserCreditsContext.jsx";
 import axios from "axios";
 import {apiEndpoints} from "../util/apiEndpoints.js";
@@ -12,9 +12,8 @@ const Subscription = () => {
     const [messageType, setMessageType] = useState("");
     const [razorpayLoaded, setRazorpayLoaded] = useState(false);
 
-    const {getToken} = useAuth();
     const razorpayScriptRef = useRef(null);
-    const {credits, setCredits, fetchUserCredits} = useContext(UserCreditsContext);
+    const {credits, setCredits, fetchUserCredits, creditsError} = useContext(UserCreditsContext);
 
     const {user} = useUser();
 
@@ -54,11 +53,9 @@ const Subscription = () => {
             script.src = 'https://checkout.razorpay.com/v1/checkout.js';
             script.async = true;
             script.onload = () => {
-                console.log('Razorpay script loaded successfully');
                 setRazorpayLoaded(true);
             };
             script.onerror = () => {
-                console.error('Failed to load Razorpay script');
                 setMessage('Payment gateway failed to load. Please refresh the page and try again.');
                 setMessageType('error');
             };
@@ -76,26 +73,10 @@ const Subscription = () => {
         };
     }, []);
 
-    // Fetch user credits on component mount
+    // Fetch user credits on component mount.
     useEffect(() => {
-        const fetchUserCredits = async () => {
-            try {
-                const token = await getToken();
-                const response = await axios.get(apiEndpoints.GET_CREDITS, {
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
-                });
-                setCredits(response.data.credits);
-            } catch (error) {
-                console.error("Error fetching user credits:", error);
-                setMessage("Failed to load your current credits. Please try again later.");
-                setMessageType("error");
-            }
-        };
-
-        fetchUserCredits();
-    }, [getToken]);
+        fetchUserCredits(true);
+    }, [fetchUserCredits]);
 
     const handlePurchase = async (plan) => {
         if (!razorpayLoaded) {
@@ -108,16 +89,11 @@ const Subscription = () => {
         setMessage('');
 
         try {
-            const token = await getToken();
             const response = await axios.post(apiEndpoints.CREATE_ORDER, {
                 planId: plan.id,
                 amount: plan.price * 100, // Razorpay expects amount in paise
                 currency: "INR",
                 credits: plan.credits
-            }, {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
             });
 
             const options = {
@@ -134,21 +110,15 @@ const Subscription = () => {
                             razorpay_payment_id: response.razorpay_payment_id,
                             razorpay_signature: response.razorpay_signature,
                             planId: plan.id
-                        }, {
-                            headers: {
-                                'Authorization': `Bearer ${token}`
-                            }
                         });
 
                         if (verifyResponse.data.success) {
                             // Update credits immediately with the value from the response
                             if (verifyResponse.data.credits) {
-                                console.log('Updating credits to:', verifyResponse.data.credits);
                                 setCredits(verifyResponse.data.credits);
                             } else {
                                 // If credits not in response, fetch the latest credits from the server
-                                console.log('Credits not in response, fetching latest credits');
-                                await fetchUserCredits();
+                                await fetchUserCredits(true);
                             }
 
                             setMessage(`Payment successful! ${plan.name} plan activated.`);
@@ -158,7 +128,6 @@ const Subscription = () => {
                             setMessageType("error");
                         }
                     } catch (error) {
-                        console.error("Payment verification error:", error);
                         setMessage("Payment verification failed. Please contact support.");
                         setMessageType("error");
                     }
@@ -178,7 +147,6 @@ const Subscription = () => {
                 throw new Error('Razorpay SDK not loaded');
             }
         }catch(error) {
-            console.error("Payment initiation error:", error);
             setMessage("Failed to initiate payment. Please try again later.");
             setMessageType("error");
         }finally {
@@ -191,6 +159,10 @@ const Subscription = () => {
             <div className="p-6">
                 <h1 className="text-2xl font-bold mb-2">Subscription Plans</h1>
                 <p className="text-gray-600 mb-6">Choose a plan that works for you</p>
+
+                {creditsError && (
+                    <div className="mb-4 p-4 rounded-lg bg-red-50 text-red-700">Unable to load data</div>
+                )}
 
                 {message && (
                     <div className={`mb-6 p-4 rounded-lg flex items-center gap-3 ${

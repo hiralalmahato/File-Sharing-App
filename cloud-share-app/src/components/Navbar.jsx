@@ -1,4 +1,4 @@
-import { useState,useContext,useEffect} from "react";
+import { useState,useContext} from "react";
 import {Menu, Share2, Wallet, X} from "lucide-react";
 import {Link} from "react-router-dom";
 import {SignedIn, UserButton} from "@clerk/clerk-react";
@@ -9,11 +9,7 @@ import { UserCreditsContext } from "../Context/UserCreditsContext.jsx";
 
 const Navbar = ({activeMenu}) => {
     const [openSideMenu, setOpenSideMenu] = useState(false);
-    const {credits, fetchUserCredits} = useContext(UserCreditsContext);
-
-    useEffect(() => {
-        fetchUserCredits();
-    }, [fetchUserCredits]);
+    const {credits, creditsError} = useContext(UserCreditsContext);
     
     return (
         <div className="flex items-center justify-between gap-5 bg-white border border-b border-gray-200/50 backdrop-blur-[2px] py-4 px-4 sm:px-7 sticky top-0 z-30">
@@ -43,6 +39,9 @@ const Navbar = ({activeMenu}) => {
                     <Link to="/subscriptions">
                         <CreditsDisplay credits={credits}/>
                     </Link>
+                    {creditsError && (
+                        <span className="text-xs text-red-500">Unable to load data</span>
+                    )}
                     <div className="relative">
                         <UserButton />
                     </div>

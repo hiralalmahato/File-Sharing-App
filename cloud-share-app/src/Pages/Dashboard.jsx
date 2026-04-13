@@ -1,5 +1,4 @@
 import DashboardLayout from "../layout/DashboardLayout.jsx";
-import {useAuth} from "@clerk/clerk-react";
 import {useContext, useEffect, useState} from "react";
 import {UserCreditsContext} from "../Context/UserCreditsContext.jsx";
 import axios from "axios";
@@ -15,8 +14,8 @@ const Dashboard = () => {
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState('');
     const [messageType, setMessageType] = useState('');
+    const [dataError, setDataError] = useState('');
     const [remainingUploads, setRemainingUploads] = useState(5);
-    const {getToken} = useAuth();
     const { fetchUserCredits } = useContext(UserCreditsContext);
     const MAX_FILES = 5;
 
@@ -24,27 +23,23 @@ const Dashboard = () => {
         const fetchRecentFiles = async () => {
             setLoading(true);
             try {
-                const token = await getToken();
-                // Use the existing endpoint that we know works
-                const res = await axios.get(apiEndpoints.FETCH_FILES, {
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                    }
-                });
+                const res = await axios.get(apiEndpoints.FETCH_FILES);
 
                 // Sort by uploadedAt and take only the 5 most recent files
                 const sortedFiles = res.data.sort((a, b) =>
                     new Date(b.uploadedAt) - new Date(a.uploadedAt)
                 ).slice(0, 5);
                 setFiles(sortedFiles);
+                setDataError('');
             } catch (error) {
-                console.error("Error fetching recent files:", error);
+                setFiles([]);
+                setDataError('Unable to load data');
             } finally {
                 setLoading(false);
             }
         };
         fetchRecentFiles();
-    }, [getToken]);
+    }, []);
 
     const handleFileChange = (e) => {
         const selectedFiles = Array.from(e.target.files);
@@ -96,23 +91,14 @@ const Dashboard = () => {
         uploadFiles.forEach(file => formData.append('files', file));
 
         try {
-            const token = await getToken();
-            const response = await axios.post(apiEndpoints.UPLOAD_FILE, formData, {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
-            });
+            await axios.post(apiEndpoints.UPLOAD_FILE, formData);
 
             setMessage('Files uploaded successfully!');
             setMessageType('success');
             setUploadFiles([]);
 
             // Refresh the recent files list
-            const res = await axios.get(apiEndpoints.FETCH_FILES, {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                }
-            });
+            const res = await axios.get(apiEndpoints.FETCH_FILES);
 
             // Sort by uploadedAt and take only the 5 most recent files
             const sortedFiles = res.data.sort((a, b) =>
@@ -120,11 +106,11 @@ const Dashboard = () => {
             ).slice(0, 5);
 
             setFiles(sortedFiles);
+            setDataError('');
 
             // Refresh user credits immediately after successful upload
-            await fetchUserCredits();
+            await fetchUserCredits(true);
         } catch (error) {
-            console.error('Error uploading files:', error);
             setMessage(error.response?.data?.message || 'Error uploading files. Please try again.');
             setMessageType('error');
         } finally {
@@ -161,6 +147,9 @@ const Dashboard = () => {
 
                     {/*right column*/}
                     <div className="w-full md:w-[60%]">
+                        {dataError && (
+                            <div className="bg-red-50 text-red-700 rounded-lg p-4 mb-4">{dataError}</div>
+                        )}
                         {loading ? (
                             <div className="bg-white rounded-lg shadow p-8 flex flex-col items-center justify-center min-h-75">
                                 <Loader2 size={40} className="text-purple-500 animate-spin mb-4" />

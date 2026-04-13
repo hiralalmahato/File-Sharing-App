@@ -1,6 +1,5 @@
 import DashboardLayout from "../layout/DashboardLayout.jsx";
 import {useContext, useState} from "react";
-import {useAuth} from "@clerk/clerk-react";
 import {UserCreditsContext} from "../Context/UserCreditsContext.jsx";
 import {AlertCircle} from "lucide-react";
 import axios from "axios";
@@ -13,7 +12,6 @@ const Upload = () => {
     const [uploading, setUploading] = useState(false);
     const [message, setMessage] = useState("");
     const [messageType, setMessageType] = useState(""); //success or error
-    const {getToken} = useAuth();
     const {credits, setCredits} = useContext(UserCreditsContext);
     const MAX_FILES = 5;
 
@@ -59,8 +57,7 @@ const Upload = () => {
         files.forEach((file) => formData.append("files", file));
 
         try {
-            const token = await getToken();
-            const response = await axios.post(apiEndpoints.UPLOAD_FILE, formData, {headers: {Authorization: `Bearer ${token}`}});
+            const response = await axios.post(apiEndpoints.UPLOAD_FILE, formData);
 
             if (response.data && response.data.remainingCredits !== undefined) {
                 setCredits(response.data.remainingCredits);
@@ -70,7 +67,6 @@ const Upload = () => {
             setMessageType("success");
             setFiles([]);
         }catch(error) {
-            console.error('Error uploading files: ', error);
             setMessage(error.response?.data?.message || "Error uploading files. Please try again.");
             setMessageType("error");
         }finally {
