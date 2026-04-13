@@ -1,0 +1,5 @@
+{
+  "installCommand": "cd cloud-share-app && npm install",
+  "buildCommand": "cd cloud-share-app && npm run build",
+  "outputDirectory": "cloud-share-app/dist"
+}
