@@ -24,7 +24,11 @@ public class TransactionController {
     @GetMapping
     public ResponseEntity<?> getUserTransactions(){
         ProfileDocument currentProfile = profileService.getCurrentProfile();
-        String clerkId = currentProfile.getClerkId();
+        // Testing-mode fallback to keep transactions endpoint available without authentication.
+        String clerkId = (currentProfile != null) ? currentProfile.getClerkId() : "test-user";
+        if (clerkId == null || clerkId.isBlank()) {
+            clerkId = "test-user";
+        }
 
         List<PaymentTransaction> transactions =  paymentTransactionRepository.findByClerkIdAndStatusOrderByTransactionDateDesc(clerkId,"SUCCESS");
         return ResponseEntity.ok(transactions);

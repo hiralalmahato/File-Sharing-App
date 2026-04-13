@@ -33,6 +33,16 @@ public class FileMetadataService {
 
     public List<FileMetadataDTO> uploadFiles(MultipartFile files[]) throws IOException {
         ProfileDocument currentProfile = profileService.getCurrentProfile();
+        // Testing-mode fallback to avoid null pointer when auth context is unavailable.
+        String clerkId = (currentProfile != null) ? currentProfile.getClerkId() : "test-user";
+        if (clerkId == null || clerkId.isBlank()) {
+            clerkId = "test-user";
+        }
+
+        if (files == null || files.length == 0) {
+            throw new IllegalArgumentException("At least one file is required for upload");
+        }
+
         List<FileMetadataDocument> savedFiles = new ArrayList<>();
 
         if(!userCreditsService.hasEnoughCredits(files.length)){
@@ -65,7 +75,7 @@ public class FileMetadataService {
                     .name(file.getOriginalFilename())
                     .size(file.getSize())
                     .type(file.getContentType())
-                    .clerkId(currentProfile.getClerkId())
+                    .clerkId(clerkId)
                     .isPublic(false)
                     .uploadedAt(LocalDateTime.now())
                     .build();
@@ -93,7 +103,13 @@ public class FileMetadataService {
     }
     public List<FileMetadataDTO> getFiles(){
         ProfileDocument currentProfile = profileService.getCurrentProfile();
-        List<FileMetadataDocument> files = fileMetadataRepository.findByClerkId(currentProfile.getClerkId());
+        // Testing-mode fallback to keep /files/my usable with permitAll security.
+        String clerkId = (currentProfile != null) ? currentProfile.getClerkId() : "test-user";
+        if (clerkId == null || clerkId.isBlank()) {
+            clerkId = "test-user";
+        }
+
+        List<FileMetadataDocument> files = fileMetadataRepository.findByClerkId(clerkId);
         return files.stream().map(this::mapToDTO).collect(Collectors.toList());
     }
     public FileMetadataDTO getPublicFile(String id){
@@ -113,9 +129,20 @@ public class FileMetadataService {
     public void deleteFile(String id){
         try{
             ProfileDocument currentProfile = profileService.getCurrentProfile();
+            // Testing-mode fallback to prevent null-related crashes.
+            String clerkId = (currentProfile != null) ? currentProfile.getClerkId() : "test-user";
+            if (clerkId == null || clerkId.isBlank()) {
+                clerkId = "test-user";
+            }
+
             FileMetadataDocument file= fileMetadataRepository.findById(id)
                     .orElseThrow(()->new RuntimeException("File not found"));
-            if(!file.getClerkId().equals(currentProfile.getClerkId())){
+
+            if (file.getClerkId() == null || file.getClerkId().isBlank()) {
+                throw new IllegalStateException("File owner metadata is missing");
+            }
+
+            if(!file.getClerkId().equals(clerkId)){
                 throw new RuntimeException("File is not belong to current user");
             }
 

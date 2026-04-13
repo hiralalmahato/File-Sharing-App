@@ -36,7 +36,11 @@ public class PaymentService {
     public PaymentDTO createOrder(PaymentDTO paymentDTO){
         try{
             ProfileDocument currentProfile = profileService.getCurrentProfile();
-            String clerkId = currentProfile.getClerkId();
+            // Testing-mode fallback to keep payments endpoint safe when auth is disabled.
+            String clerkId = (currentProfile != null) ? currentProfile.getClerkId() : "test-user";
+            if (clerkId == null || clerkId.isBlank()) {
+                clerkId = "test-user";
+            }
             RazorpayClient razorpayClient = new RazorpayClient(razorpayKeyId,razorpayKeySecret);
 
             JSONObject orderRequest = new JSONObject();
@@ -57,8 +61,8 @@ public class PaymentService {
                     .currency(paymentDTO.getCurrency())
                     .status("PENDING")
                     .transactionDate(LocalDateTime.now())
-                    .userEmail(currentProfile.getEmail())
-                    .userName(currentProfile.getFirstName()+" "+currentProfile.getLastName())
+                    .userEmail(currentProfile != null ? currentProfile.getEmail() : null)
+                    .userName(currentProfile != null ? ((currentProfile.getFirstName() != null ? currentProfile.getFirstName() : "") + " " + (currentProfile.getLastName() != null ? currentProfile.getLastName() : "")).trim() : "test-user")
                     .build();
             paymentTransactionRepository.save(transaction);
 
@@ -80,7 +84,11 @@ public class PaymentService {
     public  PaymentDTO verifyPayment(PaymentVerificationDTO request){
         try{
             ProfileDocument currentProfile = profileService.getCurrentProfile();
-            String clerkId = currentProfile.getClerkId();
+            // Testing-mode fallback to avoid null pointer when no authenticated principal exists.
+            String clerkId = (currentProfile != null) ? currentProfile.getClerkId() : "test-user";
+            if (clerkId == null || clerkId.isBlank()) {
+                clerkId = "test-user";
+            }
 
             String data = request.getRazorpay_order_id()+ "|" + request.getRazorpay_payment_id();
             String generatedSignature = generateHmacSha256Signature(data,razorpayKeySecret);

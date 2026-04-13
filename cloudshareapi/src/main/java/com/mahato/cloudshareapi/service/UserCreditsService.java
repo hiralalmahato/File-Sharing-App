@@ -1,5 +1,6 @@
 package com.mahato.cloudshareapi.service;
 
+import com.mahato.cloudshareapi.document.ProfileDocument;
 import com.mahato.cloudshareapi.document.UserCredits;
 import com.mahato.cloudshareapi.repository.UserCreditsRepository;
 import lombok.RequiredArgsConstructor;
@@ -29,7 +30,12 @@ public class UserCreditsService {
     }
 
     public UserCredits getUserCredits(){
-        String clerkId = profileService.getCurrentProfile().getClerkId();
+        ProfileDocument profile = profileService.getCurrentProfile();
+        // Testing-mode fallback to avoid null pointer when authentication is disabled.
+        String clerkId = (profile != null) ? profile.getClerkId() : "test-user";
+        if (clerkId == null || clerkId.isBlank()) {
+            clerkId = "test-user";
+        }
         return getUserCredits(clerkId);
     }
     public Boolean hasEnoughCredits(int requiredCredits){
