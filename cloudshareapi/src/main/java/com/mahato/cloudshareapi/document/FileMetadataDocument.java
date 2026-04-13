@@ -24,5 +24,6 @@ public class FileMetadataDocument {
     private String clerkId;
     private Boolean isPublic;
     private String fileLocation;
+    private String cloudinaryPublicId;
     private LocalDateTime uploadedAt;
 }

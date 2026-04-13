@@ -1,31 +1,25 @@
 package com.mahato.cloudshareapi.service;
 
+import com.cloudinary.Cloudinary;
+import com.cloudinary.utils.ObjectUtils;
 import com.mahato.cloudshareapi.document.FileMetadataDocument;
 import com.mahato.cloudshareapi.document.ProfileDocument;
 import com.mahato.cloudshareapi.dto.FileMetadataDTO;
 import com.mahato.cloudshareapi.repository.FileMetadataRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.UrlResource;
 import org.springframework.stereotype.Service;
-import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
+import java.net.MalformedURLException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
-
-import org.bson.types.ObjectId;
-import org.springframework.data.mongodb.core.query.Criteria;
-import org.springframework.data.mongodb.core.query.Query;
-import org.springframework.data.mongodb.gridfs.GridFsResource;
-import org.springframework.data.mongodb.gridfs.GridFsTemplate;
-import com.mongodb.client.gridfs.model.GridFSFile;
 
 @Service
 @RequiredArgsConstructor
@@ -35,7 +29,7 @@ public class FileMetadataService {
     private final ProfileService profileService;
     private final UserCreditsService userCreditsService;
     private final FileMetadataRepository fileMetadataRepository;
-    private final GridFsTemplate gridFsTemplate;
+    private final Cloudinary cloudinary;
 
     public List<FileMetadataDTO> uploadFiles(MultipartFile files[]) throws IOException {
         ProfileDocument currentProfile = profileService.getCurrentProfile();
@@ -46,10 +40,28 @@ public class FileMetadataService {
         }
 
         for (MultipartFile file : files){
-            ObjectId fileId = gridFsTemplate.store(file.getInputStream(), file.getOriginalFilename(), file.getContentType());
+            Map<?, ?> uploadResult;
+            try {
+            uploadResult = cloudinary.uploader().upload(
+                file.getBytes(),
+                ObjectUtils.asMap(
+                    "resource_type", "auto",
+                    "folder", "cloudshare/uploads",
+                    "use_filename", true,
+                    "unique_filename", true,
+                    "overwrite", false
+                )
+            );
+            } catch (Exception ex) {
+            throw new RuntimeException("Cloudinary upload failed", ex);
+            }
+
+            String secureUrl = String.valueOf(uploadResult.get("secure_url"));
+            String publicId = String.valueOf(uploadResult.get("public_id"));
 
             FileMetadataDocument fileMetaData = FileMetadataDocument.builder()
-                    .fileLocation(fileId.toString())
+                .fileLocation(secureUrl)
+                .cloudinaryPublicId(publicId)
                     .name(file.getOriginalFilename())
                     .size(file.getSize())
                     .type(file.getContentType())
@@ -107,10 +119,18 @@ public class FileMetadataService {
                 throw new RuntimeException("File is not belong to current user");
             }
 
-            try {
-                gridFsTemplate.delete(new Query(Criteria.where("_id").is(new ObjectId(file.getFileLocation()))));
-            } catch (Exception ex) {
-                // Ignore if it doesn't exist
+            if (file.getCloudinaryPublicId() != null && !file.getCloudinaryPublicId().isBlank()) {
+                try {
+                    cloudinary.uploader().destroy(
+                            file.getCloudinaryPublicId(),
+                            ObjectUtils.asMap(
+                                    "resource_type", "auto",
+                                    "invalidate", true
+                            )
+                    );
+                } catch (Exception ex) {
+                    throw new RuntimeException("Error deleting file from Cloudinary", ex);
+                }
             }
 
             fileMetadataRepository.deleteById(id);
@@ -129,11 +149,15 @@ public class FileMetadataService {
         return mapToDTO(file);
     }
 
-    public GridFsResource getFileResource(String gridFsId) {
-        GridFSFile file = gridFsTemplate.findOne(new Query(Criteria.where("_id").is(new ObjectId(gridFsId))));
-        if (file == null) {
-            throw new RuntimeException("File not found in MongoDB GridFS");
+    public Resource getFileResource(String fileUrl) {
+        try {
+            Resource resource = new UrlResource(fileUrl);
+            if (!resource.exists()) {
+                throw new RuntimeException("File not found in Cloudinary");
+            }
+            return resource;
+        } catch (MalformedURLException e) {
+            throw new RuntimeException("Invalid file URL", e);
         }
-        return gridFsTemplate.getResource(file);
     }
 }
