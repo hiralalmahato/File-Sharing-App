@@ -19,14 +19,8 @@ public class CorsConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
 
-        // Allow specific origins (Vercel frontend + development URLs)
-        config.setAllowedOrigins(Arrays.asList(
-                "https://file-sharing-app-inky.vercel.app",      // Production Vercel URL
-                "http://localhost:5173",                          // Local Vite dev
-                "http://localhost:3000",                          // Local fallback
-                "http://127.0.0.1:5173",                          // Localhost variant
-                "http://127.0.0.1:3000"                           // Localhost variant
-        ));
+        // Use patterns to support dynamic Vercel preview URLs while allowing credentials
+        config.setAllowedOriginPatterns(Arrays.asList("*"));
 
         // Allow all HTTP methods
         config.setAllowedMethods(Arrays.asList(

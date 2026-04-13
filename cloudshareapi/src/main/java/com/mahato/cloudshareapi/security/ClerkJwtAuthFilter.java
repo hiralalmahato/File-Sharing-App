@@ -85,7 +85,8 @@ public class ClerkJwtAuthFilter extends OncePerRequestFilter {
 
 
         }catch (Exception e){
-            response.sendError(HttpServletResponse.SC_FORBIDDEN,"Invalid JWT token"+ e.getMessage());
+            System.err.println("JWT Verification Error: " + e.getMessage());
+            response.sendError(HttpServletResponse.SC_FORBIDDEN,"Invalid JWT token: "+ e.getMessage());
             return;
         }
 

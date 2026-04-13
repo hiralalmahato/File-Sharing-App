@@ -108,7 +108,7 @@ public class FileMetadataService {
             }
 
             try {
-                gridFsTemplate.delete(new Query(Criteria.where("_id").is(file.getFileLocation())));
+                gridFsTemplate.delete(new Query(Criteria.where("_id").is(new ObjectId(file.getFileLocation()))));
             } catch (Exception ex) {
                 // Ignore if it doesn't exist
             }
@@ -130,7 +130,7 @@ public class FileMetadataService {
     }
 
     public GridFsResource getFileResource(String gridFsId) {
-        GridFSFile file = gridFsTemplate.findOne(new Query(Criteria.where("_id").is(gridFsId)));
+        GridFSFile file = gridFsTemplate.findOne(new Query(Criteria.where("_id").is(new ObjectId(gridFsId))));
         if (file == null) {
             throw new RuntimeException("File not found in MongoDB GridFS");
         }
