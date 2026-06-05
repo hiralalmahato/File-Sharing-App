@@ -147,6 +147,23 @@ public class FileMetadataService {
         return signedUrl;
     }
 
+    public boolean isUrlAccessible(String urlStr) {
+        if (urlStr == null || urlStr.isBlank()) return false;
+        try {
+            URL url = new URL(urlStr);
+            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+            connection.setRequestMethod("HEAD");
+            connection.setInstanceFollowRedirects(true);
+            connection.setConnectTimeout(10000);
+            connection.setReadTimeout(10000);
+            int code = connection.getResponseCode();
+            connection.disconnect();
+            return code >= 200 && code < 400;
+        } catch (Exception ex) {
+            return false;
+        }
+    }
+
     public String getDownloadableFileUrl(String fileUrl) {
         if (fileUrl == null || fileUrl.isBlank()) {
             throw new IllegalArgumentException("File URL is missing");

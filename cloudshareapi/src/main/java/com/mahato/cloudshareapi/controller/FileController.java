@@ -103,6 +103,14 @@ public class FileController {
             if (url == null || url.isBlank()) {
                 return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(Map.of("error", "Unable to build download URL"));
             }
+
+            // Verify the signed URL is actually reachable before returning it to the client.
+            boolean ok = fileMetadataService.isUrlAccessible(url);
+            if (!ok) {
+                log.warn("Signed URL for {} was not reachable, returning error to trigger fallback", id);
+                return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(Map.of("error", "Download URL not reachable"));
+            }
+
             return ResponseEntity.ok(Map.of("url", url));
         } catch (RuntimeException ex) {
             log.error("Signed URL generation failed for id {}: {}", id, ex.getMessage(), ex);
