@@ -104,11 +104,12 @@ public class FileController {
                 return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(Map.of("error", "Unable to build download URL"));
             }
 
-            // Verify the signed URL is actually reachable before returning it to the client.
+            // Verify the signed URL is reachable. If not reachable, return with null url
+            // so frontend falls back to server-streamed download instead of receiving 502/403.
             boolean ok = fileMetadataService.isUrlAccessible(url);
             if (!ok) {
-                log.warn("Signed URL for {} was not reachable, returning error to trigger fallback", id);
-                return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(Map.of("error", "Download URL not reachable"));
+                log.warn("Signed URL for {} was not reachable, returning null url to trigger fallback", id);
+                return ResponseEntity.ok(Map.of("url", (String) null));
             }
 
             return ResponseEntity.ok(Map.of("url", url));
