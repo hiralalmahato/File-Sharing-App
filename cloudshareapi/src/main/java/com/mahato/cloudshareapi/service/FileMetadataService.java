@@ -11,10 +11,12 @@ import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
-import org.springframework.web.client.RestTemplate;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.MalformedURLException;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -31,7 +33,6 @@ public class FileMetadataService {
     private final UserCreditsService userCreditsService;
     private final FileMetadataRepository fileMetadataRepository;
     private final Cloudinary cloudinary;
-    private final RestTemplate restTemplate = new RestTemplate();
 
     public List<FileMetadataDTO> uploadFiles(MultipartFile files[]) throws IOException {
         ProfileDocument currentProfile = profileService.getCurrentProfile();
@@ -147,13 +148,33 @@ public class FileMetadataService {
     }
 
     public byte[] downloadFileBytes(String fileUrl) {
+        if (fileUrl == null || fileUrl.isBlank()) {
+            throw new IllegalArgumentException("File URL is missing");
+        }
+
         try {
-            byte[] fileBytes = restTemplate.getForObject(fileUrl, byte[].class);
-            if (fileBytes == null || fileBytes.length == 0) {
-                throw new RuntimeException("Empty response from file storage");
+            URL url = new URL(fileUrl);
+            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+            connection.setInstanceFollowRedirects(true);
+            connection.setRequestMethod("GET");
+            connection.setConnectTimeout(15000);
+            connection.setReadTimeout(30000);
+
+            int responseCode = connection.getResponseCode();
+            if (responseCode < 200 || responseCode >= 300) {
+                throw new RuntimeException("Storage responded with HTTP " + responseCode);
             }
-            return fileBytes;
-        } catch (Exception ex) {
+
+            try (InputStream inputStream = connection.getInputStream()) {
+                byte[] bytes = inputStream.readAllBytes();
+                if (bytes.length == 0) {
+                    throw new RuntimeException("Empty response from file storage");
+                }
+                return bytes;
+            } finally {
+                connection.disconnect();
+            }
+        } catch (IOException ex) {
             throw new RuntimeException("Unable to download file from storage", ex);
         }
     }
