@@ -100,8 +100,11 @@ public class FileController {
     public ResponseEntity<?> signedUrl(@PathVariable String id) {
         try {
             String url = fileMetadataService.getSignedUrlForDownload(id);
+
+            // If service couldn't produce a URL, return ok with null so frontend falls back
             if (url == null || url.isBlank()) {
-                return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(Map.of("error", "Unable to build download URL"));
+                log.warn("No signed URL generated for {}, returning null to trigger fallback", id);
+                return ResponseEntity.ok(Map.of("url", (String) null));
             }
 
             // Verify the signed URL is reachable. If not reachable, return with null url

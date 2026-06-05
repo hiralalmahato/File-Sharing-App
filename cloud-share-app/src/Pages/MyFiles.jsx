@@ -61,11 +61,36 @@ const MyFiles = () => {
         }
 
         try {
-            // Ask backend for a signed Cloudinary URL and redirect browser to it
+            const extension = (file.fileName || file.name || '').split('.').pop().toLowerCase();
+
+            // For document-like types, use server-streamed download to avoid Cloudinary ACL issues
+            const docLike = ['pdf','doc','docx','xls','xlsx','ppt','pptx','txt','rtf','csv'];
+            if (docLike.includes(extension) || (file.type && !file.type.startsWith('image/'))) {
+                const downloadRes = await axios.get(apiEndpoints.DOWNLOAD_FILE(file.id), { responseType: 'blob' });
+                // try to get filename from Content-Disposition header
+                const disposition = downloadRes.headers['content-disposition'] || downloadRes.headers['Content-Disposition'];
+                let filename = file.fileName || file.name || 'download';
+                if (disposition) {
+                    const match = /filename\*=UTF-8''([^;\n\r]+)|filename="?([^";]+)"?/.exec(disposition);
+                    if (match) {
+                        filename = decodeURIComponent(match[1] || match[2]);
+                    }
+                }
+                const blobUrl = window.URL.createObjectURL(new Blob([downloadRes.data]));
+                const link = document.createElement('a');
+                link.href = blobUrl;
+                link.setAttribute('download', filename);
+                document.body.appendChild(link);
+                link.click();
+                link.remove();
+                window.URL.revokeObjectURL(blobUrl);
+                return;
+            }
+
+            // Ask backend for a signed Cloudinary URL and redirect browser to it for images
             const res = await axios.get(apiEndpoints.SIGNED_URL(file.id));
             const url = res.data?.url;
             if (url) {
-                // direct navigation lets Cloudinary handle the download
                 window.location.href = url;
                 return;
             }

@@ -47,6 +47,29 @@ const PublicFileView = () => {
         }
 
         try {
+            const extension = (file?.name || '').split('.').pop().toLowerCase();
+            const docLike = ['pdf','doc','docx','xls','xlsx','ppt','pptx','txt','rtf','csv'];
+            if (docLike.includes(extension) || (file?.type && !file.type.startsWith('image/'))) {
+                const response = await axios.get(apiEndpoints.DOWNLOAD_FILE(fileId), { responseType: 'blob' });
+                const disposition = response.headers['content-disposition'] || response.headers['Content-Disposition'];
+                let filename = file?.name || 'download';
+                if (disposition) {
+                    const match = /filename\*=UTF-8''([^;\n\r]+)|filename="?([^";]+)"?/.exec(disposition);
+                    if (match) {
+                        filename = decodeURIComponent(match[1] || match[2]);
+                    }
+                }
+                const blobUrl = window.URL.createObjectURL(new Blob([response.data]));
+                const link = document.createElement('a');
+                link.href = blobUrl;
+                link.setAttribute('download', filename);
+                document.body.appendChild(link);
+                link.click();
+                link.remove();
+                window.URL.revokeObjectURL(blobUrl);
+                return;
+            }
+
             const res = await axios.get(apiEndpoints.SIGNED_URL(fileId));
             const url = res.data?.url;
             if (url) {
