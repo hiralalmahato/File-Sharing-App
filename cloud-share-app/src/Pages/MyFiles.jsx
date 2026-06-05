@@ -53,15 +53,28 @@ const MyFiles = () => {
     }
 
     //Handle file download
-    const handleDownload = (file) => {
+    const handleDownload = async (file) => {
         if (!file?.id) {
             toast.error('Unable to download file right now.');
             return;
         }
 
-        // Open the backend download route in a new tab. Backend will redirect to the
-        // actual storage URL (Cloudinary), allowing the browser to handle the download.
-        window.open(apiEndpoints.DOWNLOAD_FILE(file.id), '_blank', 'noopener,noreferrer');
+        try {
+            const response = await axios.get(apiEndpoints.DOWNLOAD_FILE(file.id), {
+                responseType: 'blob'
+            });
+
+            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', file.fileName || file.name || 'download');
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            window.URL.revokeObjectURL(url);
+        } catch (error) {
+            toast.error('Unable to download file right now.');
+        }
     }
 
     const handleViewFile = (file) => {

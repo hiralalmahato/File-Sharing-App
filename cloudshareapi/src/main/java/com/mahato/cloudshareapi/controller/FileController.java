@@ -7,9 +7,6 @@ import com.mahato.cloudshareapi.dto.FileMetadataDTO;
 import com.mahato.cloudshareapi.service.FileMetadataService;
 import com.mahato.cloudshareapi.service.UserCreditsService;
 import lombok.RequiredArgsConstructor;
-import org.apache.tomcat.util.file.ConfigurationSource;
-import org.springframework.core.io.Resource;
-import org.springframework.core.io.UrlResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -17,9 +14,6 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.net.MalformedURLException;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -58,14 +52,14 @@ public class FileController {
         return ResponseEntity.ok(file);
     }
     @GetMapping("/download/{id}")
-    public ResponseEntity<?> download(@PathVariable String id) {
+    public ResponseEntity<byte[]> download(@PathVariable String id) {
         FileMetadataDTO downloadableFile = fileMetadataService.getDownloadableFile(id);
-        String downloadUrl = fileMetadataService.getDownloadableFileUrl(downloadableFile.getFileLocation());
-        // Redirect to Cloudinary in attachment mode so PDFs and other files download instead of
-        // opening in the browser's built-in viewer.
-        return ResponseEntity.status(302)
-            .header(HttpHeaders.LOCATION, downloadUrl)
-                .build();
+        byte[] fileBytes = fileMetadataService.downloadFileBytes(downloadableFile.getFileLocation());
+
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + downloadableFile.getName() + "\"")
+                .body(fileBytes);
     }
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteFile(@PathVariable String id){

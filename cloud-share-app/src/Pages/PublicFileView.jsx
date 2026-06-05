@@ -46,8 +46,23 @@ const PublicFileView = () => {
             return;
         }
 
-        // Open backend download endpoint which redirects to the storage provider.
-        window.open(apiEndpoints.DOWNLOAD_FILE(fileId), '_blank', 'noopener,noreferrer');
+        try {
+            const response = await axios.get(apiEndpoints.DOWNLOAD_FILE(fileId), {
+                responseType: 'blob'
+            });
+
+            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', file?.name || 'download');
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            window.URL.revokeObjectURL(url);
+        } catch (err) {
+            console.error("Download failed:", err);
+            toast.error("Sorry, the file could not be downloaded.");
+        }
     };
 
     const openShareModal = () => {

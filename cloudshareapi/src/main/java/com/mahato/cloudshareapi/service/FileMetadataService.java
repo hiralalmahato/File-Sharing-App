@@ -11,6 +11,7 @@ import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.client.RestTemplate;
 
 import java.io.IOException;
 import java.net.MalformedURLException;
@@ -30,6 +31,7 @@ public class FileMetadataService {
     private final UserCreditsService userCreditsService;
     private final FileMetadataRepository fileMetadataRepository;
     private final Cloudinary cloudinary;
+    private final RestTemplate restTemplate = new RestTemplate();
 
     public List<FileMetadataDTO> uploadFiles(MultipartFile files[]) throws IOException {
         ProfileDocument currentProfile = profileService.getCurrentProfile();
@@ -142,6 +144,18 @@ public class FileMetadataService {
         }
 
         return fileUrl.replace("/upload/", "/upload/fl_attachment/");
+    }
+
+    public byte[] downloadFileBytes(String fileUrl) {
+        try {
+            byte[] fileBytes = restTemplate.getForObject(fileUrl, byte[].class);
+            if (fileBytes == null || fileBytes.length == 0) {
+                throw new RuntimeException("Empty response from file storage");
+            }
+            return fileBytes;
+        } catch (Exception ex) {
+            throw new RuntimeException("Unable to download file from storage", ex);
+        }
     }
 
     public void deleteFile(String id){
