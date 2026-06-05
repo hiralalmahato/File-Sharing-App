@@ -114,8 +114,14 @@ public class FileController {
             return ResponseEntity.ok(Map.of("url", url));
         } catch (RuntimeException ex) {
             log.error("Signed URL generation failed for id {}: {}", id, ex.getMessage(), ex);
-            if (ex.getMessage() != null && ex.getMessage().toLowerCase().contains("file not found")) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", ex.getMessage()));
+            if (ex.getMessage() != null) {
+                String msg = ex.getMessage().toLowerCase();
+                if (msg.contains("file not found")) {
+                    return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", ex.getMessage()));
+                }
+                if (msg.contains("not public")) {
+                    return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "File is not public"));
+                }
             }
             return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(Map.of("error", "Unable to build download URL"));
         }

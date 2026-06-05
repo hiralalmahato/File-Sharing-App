@@ -136,6 +136,10 @@ public class FileMetadataService {
         FileMetadataDocument file = fileMetadataRepository.findById(fileId)
                 .orElseThrow(() -> new RuntimeException("File not found"));
 
+        if (file.getIsPublic() == null || !file.getIsPublic()) {
+            throw new RuntimeException("File is not public");
+        }
+
         String signedUrl = buildSignedCloudinaryUrl(file);
         if (signedUrl == null || signedUrl.isBlank()) {
             // fallback to stored fileLocation (may be public)

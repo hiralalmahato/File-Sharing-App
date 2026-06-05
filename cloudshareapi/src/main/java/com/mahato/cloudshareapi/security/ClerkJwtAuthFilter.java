@@ -96,6 +96,7 @@ public class ClerkJwtAuthFilter extends OncePerRequestFilter {
     private boolean isPublicRoute(String requestUri) {
         return requestUri.contains("/webhooks")
                 || requestUri.contains("/public")
+                || requestUri.contains("/signed-url")
                 || requestUri.contains("/download")
                 || requestUri.endsWith("/")
                 || requestUri.contains("/health");
