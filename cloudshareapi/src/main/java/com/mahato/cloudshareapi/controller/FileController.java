@@ -7,11 +7,15 @@ import com.mahato.cloudshareapi.dto.FileMetadataDTO;
 import com.mahato.cloudshareapi.service.FileMetadataService;
 import com.mahato.cloudshareapi.service.UserCreditsService;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import java.util.Map;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -25,6 +29,8 @@ public class FileController {
 
     private final FileMetadataService fileMetadataService;
     private final UserCreditsService userCreditsService;
+
+    private static final Logger log = LoggerFactory.getLogger(FileController.class);
 
     @PostMapping("/upload")
     public ResponseEntity<?> uploadFiles(@RequestPart("files") MultipartFile files[]) throws IOException {
@@ -52,27 +58,43 @@ public class FileController {
         return ResponseEntity.ok(file);
     }
     @GetMapping("/download/{id}")
-    public ResponseEntity<byte[]> download(@PathVariable String id) {
-        FileMetadataDTO downloadableFile = fileMetadataService.getDownloadableFile(id);
-        byte[] fileBytes = fileMetadataService.downloadFileBytes(id);
+    public ResponseEntity<?> download(@PathVariable String id) {
+        try {
+            FileMetadataDTO downloadableFile = fileMetadataService.getDownloadableFile(id);
+            byte[] fileBytes = fileMetadataService.downloadFileBytes(id);
 
-        return ResponseEntity.ok()
-                .contentType(MediaType.APPLICATION_OCTET_STREAM)
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + downloadableFile.getName() + "\"")
-                .body(fileBytes);
+            return ResponseEntity.ok()
+                    .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + downloadableFile.getName() + "\"")
+                    .body(fileBytes);
+        } catch (RuntimeException ex) {
+            log.error("Download failed for id {}: {}", id, ex.getMessage(), ex);
+            if (ex.getMessage() != null && ex.getMessage().toLowerCase().contains("file not found")) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", ex.getMessage()));
+            }
+            return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(Map.of("error", "Unable to fetch file from storage"));
+        }
     }
 
     @GetMapping("/view/{id}")
-    public ResponseEntity<byte[]> view(@PathVariable String id) {
-        FileMetadataDTO downloadableFile = fileMetadataService.getDownloadableFile(id);
-        byte[] fileBytes = fileMetadataService.downloadFileBytes(id);
+    public ResponseEntity<?> view(@PathVariable String id) {
+        try {
+            FileMetadataDTO downloadableFile = fileMetadataService.getDownloadableFile(id);
+            byte[] fileBytes = fileMetadataService.downloadFileBytes(id);
 
-        MediaType mediaType = fileMetadataService.resolveMediaType(downloadableFile.getType());
+            MediaType mediaType = fileMetadataService.resolveMediaType(downloadableFile.getType());
 
-        return ResponseEntity.ok()
-                .contentType(mediaType)
-                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + downloadableFile.getName() + "\"")
-                .body(fileBytes);
+            return ResponseEntity.ok()
+                    .contentType(mediaType)
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + downloadableFile.getName() + "\"")
+                    .body(fileBytes);
+        } catch (RuntimeException ex) {
+            log.error("View failed for id {}: {}", id, ex.getMessage(), ex);
+            if (ex.getMessage() != null && ex.getMessage().toLowerCase().contains("file not found")) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", ex.getMessage()));
+            }
+            return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(Map.of("error", "Unable to fetch file from storage"));
+        }
     }
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteFile(@PathVariable String id){
