@@ -90,8 +90,8 @@ const MyFiles = () => {
             return;
         }
 
-        if (file.url) {
-            window.open(file.url, "_blank", "noopener,noreferrer");
+        if (file?.id) {
+            window.open(apiEndpoints.VIEW_FILE(file.id), "_blank", "noopener,noreferrer");
             return;
         }
 

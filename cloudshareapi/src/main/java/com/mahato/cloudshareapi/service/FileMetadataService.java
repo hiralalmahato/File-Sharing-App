@@ -8,6 +8,7 @@ import com.mahato.cloudshareapi.dto.FileMetadataDTO;
 import com.mahato.cloudshareapi.repository.FileMetadataRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.http.MediaType;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
@@ -205,6 +206,18 @@ public class FileMetadataService {
             }
         } catch (IOException ex) {
             throw new RuntimeException("Unable to download file from storage", ex);
+        }
+    }
+
+    public MediaType resolveMediaType(String mimeType) {
+        if (mimeType == null || mimeType.isBlank()) {
+            return MediaType.APPLICATION_OCTET_STREAM;
+        }
+
+        try {
+            return MediaType.parseMediaType(mimeType);
+        } catch (Exception ex) {
+            return MediaType.APPLICATION_OCTET_STREAM;
         }
     }
 

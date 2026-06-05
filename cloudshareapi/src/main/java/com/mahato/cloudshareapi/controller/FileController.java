@@ -61,6 +61,19 @@ public class FileController {
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + downloadableFile.getName() + "\"")
                 .body(fileBytes);
     }
+
+    @GetMapping("/view/{id}")
+    public ResponseEntity<byte[]> view(@PathVariable String id) {
+        FileMetadataDTO downloadableFile = fileMetadataService.getDownloadableFile(id);
+        byte[] fileBytes = fileMetadataService.downloadFileBytes(id);
+
+        MediaType mediaType = fileMetadataService.resolveMediaType(downloadableFile.getType());
+
+        return ResponseEntity.ok()
+                .contentType(mediaType)
+                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + downloadableFile.getName() + "\"")
+                .body(fileBytes);
+    }
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteFile(@PathVariable String id){
         fileMetadataService.deleteFile(id);
