@@ -54,13 +54,15 @@ const MyFiles = () => {
 
     //Handle file download
     const handleDownload = async (file) => {
-        if (!file?.id) {
+        const downloadUrl = file?.url || file?.fileLocation || (file?.id ? apiEndpoints.DOWNLOAD_FILE(file.id) : null);
+
+        if (!downloadUrl) {
             toast.error('Unable to download file right now.');
             return;
         }
 
         try {
-            const response = await axios.get(apiEndpoints.DOWNLOAD_FILE(file.id), {
+            const response = await axios.get(downloadUrl, {
                 responseType: 'blob'
             });
 

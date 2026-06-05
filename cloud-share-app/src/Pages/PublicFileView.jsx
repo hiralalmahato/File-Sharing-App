@@ -41,13 +41,15 @@ const PublicFileView = () => {
     }, [fileId, getToken]);
 
     const handleDownload = async () => {
-        if (!fileId) {
+        const downloadUrl = file?.fileLocation || file?.url || (fileId ? apiEndpoints.DOWNLOAD_FILE(fileId) : null);
+
+        if (!downloadUrl) {
             toast.error("Sorry, the file could not be downloaded.");
             return;
         }
 
         try {
-            const response = await axios.get(apiEndpoints.DOWNLOAD_FILE(fileId), {
+            const response = await axios.get(downloadUrl, {
                 responseType: 'blob'
             });
 
