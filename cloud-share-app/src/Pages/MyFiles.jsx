@@ -45,8 +45,9 @@ const MyFiles = () => {
     //Toggles the public/private status of a file
     const togglePublic = async (fileToUpdate) => {
         try {
-            await axios.patch(apiEndpoints.TOGGLE_FILE(fileToUpdate.id), {});
-            setFiles(files.map((file) => file.id === fileToUpdate.id ? {...file, isPublic: !file.isPublic}: file));
+            const res = await axios.patch(apiEndpoints.TOGGLE_FILE(fileToUpdate.id), {});
+            const updated = res.data;
+            setFiles(files.map((file) => file.id === fileToUpdate.id ? {...file, ...updated} : file));
         }catch (error) {
             toast.error('Unable to update sharing status.');
         }
