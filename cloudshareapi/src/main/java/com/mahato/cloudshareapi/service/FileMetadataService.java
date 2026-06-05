@@ -142,8 +142,9 @@ public class FileMetadataService {
             return file.getFileLocation();
         }
 
-        // Prefer attachment variant so browser downloads the file
-        return getDownloadableFileUrl(signedUrl);
+        // Return the signed URL as-generated. Do NOT inject /fl_attachment/ after signing
+        // because that invalidates the Cloudinary signature.
+        return signedUrl;
     }
 
     public String getDownloadableFileUrl(String fileUrl) {
