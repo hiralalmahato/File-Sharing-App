@@ -41,7 +41,7 @@ const PublicFileView = () => {
     }, [fileId, getToken]);
 
     const handleDownload = async () => {
-        const downloadUrl = file?.fileLocation || file?.url || (fileId ? apiEndpoints.DOWNLOAD_FILE(fileId) : null);
+        const downloadUrl = fileId ? apiEndpoints.DOWNLOAD_FILE(fileId) : null;
 
         if (!downloadUrl) {
             toast.error("Sorry, the file could not be downloaded.");

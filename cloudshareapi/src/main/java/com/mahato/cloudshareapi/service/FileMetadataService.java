@@ -7,21 +7,22 @@ import com.mahato.cloudshareapi.document.ProfileDocument;
 import com.mahato.cloudshareapi.dto.FileMetadataDTO;
 import com.mahato.cloudshareapi.repository.FileMetadataRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.core.io.Resource;
-import org.springframework.core.io.UrlResource;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.MalformedURLException;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Service
@@ -147,7 +148,35 @@ public class FileMetadataService {
         return fileUrl.replace("/upload/", "/upload/fl_attachment/");
     }
 
-    public byte[] downloadFileBytes(String fileUrl) {
+    public byte[] downloadFileBytes(String fileId) {
+        FileMetadataDocument file = fileMetadataRepository.findById(fileId)
+                .orElseThrow(() -> new RuntimeException("File not found"));
+
+        Set<String> candidateUrls = new LinkedHashSet<>();
+        if (file.getFileLocation() != null && !file.getFileLocation().isBlank()) {
+            candidateUrls.add(file.getFileLocation());
+            candidateUrls.add(getDownloadableFileUrl(file.getFileLocation()));
+        }
+
+        String signedUrl = buildSignedCloudinaryUrl(file);
+        if (signedUrl != null && !signedUrl.isBlank()) {
+            candidateUrls.add(signedUrl);
+            candidateUrls.add(getDownloadableFileUrl(signedUrl));
+        }
+
+        RuntimeException lastError = null;
+        for (String candidateUrl : candidateUrls) {
+            try {
+                return fetchBytes(candidateUrl);
+            } catch (RuntimeException ex) {
+                lastError = ex;
+            }
+        }
+
+        throw new RuntimeException("Unable to download file from storage", lastError);
+    }
+
+    private byte[] fetchBytes(String fileUrl) {
         if (fileUrl == null || fileUrl.isBlank()) {
             throw new IllegalArgumentException("File URL is missing");
         }
@@ -177,6 +206,82 @@ public class FileMetadataService {
         } catch (IOException ex) {
             throw new RuntimeException("Unable to download file from storage", ex);
         }
+    }
+
+    private String buildSignedCloudinaryUrl(FileMetadataDocument file) {
+        if (file.getCloudinaryPublicId() == null || file.getCloudinaryPublicId().isBlank()) {
+            return null;
+        }
+
+        String resourceType = resolveResourceType(file.getFileLocation(), file.getType());
+        String format = resolveFormat(file.getName(), file.getFileLocation());
+        Integer version = resolveVersion(file.getFileLocation());
+
+        var urlBuilder = cloudinary.url()
+                .signed(true)
+                .resourceType(resourceType)
+                .type("upload");
+
+        if (version != null) {
+            urlBuilder.version(version);
+        }
+
+        if (format != null && !format.isBlank()) {
+            urlBuilder.format(format);
+        }
+
+        return urlBuilder.generate(file.getCloudinaryPublicId());
+    }
+
+    private String resolveResourceType(String fileUrl, String mimeType) {
+        if (fileUrl != null && !fileUrl.isBlank()) {
+            Matcher matcher = Pattern.compile("/(image|video|raw)/upload/").matcher(fileUrl);
+            if (matcher.find()) {
+                return matcher.group(1);
+            }
+        }
+
+        if (mimeType == null || mimeType.isBlank()) {
+            return "raw";
+        }
+
+        String lower = mimeType.toLowerCase();
+        if (lower.startsWith("image/")) {
+            return "image";
+        }
+        if (lower.startsWith("video/")) {
+            return "video";
+        }
+        return "raw";
+    }
+
+    private String resolveFormat(String fileName, String fileUrl) {
+        String source = (fileName != null && !fileName.isBlank()) ? fileName : fileUrl;
+        if (source == null || source.isBlank() || !source.contains(".")) {
+            return null;
+        }
+
+        String extension = source.substring(source.lastIndexOf('.') + 1);
+        if (extension.contains("/")) {
+            return null;
+        }
+        return extension;
+    }
+
+    private Integer resolveVersion(String fileUrl) {
+        if (fileUrl == null || fileUrl.isBlank()) {
+            return null;
+        }
+
+        Matcher matcher = Pattern.compile("/v(\\d+)/").matcher(fileUrl);
+        if (matcher.find()) {
+            try {
+                return Integer.parseInt(matcher.group(1));
+            } catch (NumberFormatException ignored) {
+                return null;
+            }
+        }
+        return null;
     }
 
     public void deleteFile(String id){
@@ -229,15 +334,4 @@ public class FileMetadataService {
         return mapToDTO(file);
     }
 
-    public Resource getFileResource(String fileUrl) {
-        try {
-            Resource resource = new UrlResource(fileUrl);
-            if (!resource.exists()) {
-                throw new RuntimeException("File not found in Cloudinary");
-            }
-            return resource;
-        } catch (MalformedURLException e) {
-            throw new RuntimeException("Invalid file URL", e);
-        }
-    }
 }

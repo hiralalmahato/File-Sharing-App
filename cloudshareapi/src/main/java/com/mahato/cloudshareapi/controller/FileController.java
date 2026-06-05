@@ -54,7 +54,7 @@ public class FileController {
     @GetMapping("/download/{id}")
     public ResponseEntity<byte[]> download(@PathVariable String id) {
         FileMetadataDTO downloadableFile = fileMetadataService.getDownloadableFile(id);
-        byte[] fileBytes = fileMetadataService.downloadFileBytes(downloadableFile.getFileLocation());
+        byte[] fileBytes = fileMetadataService.downloadFileBytes(id);
 
         return ResponseEntity.ok()
                 .contentType(MediaType.APPLICATION_OCTET_STREAM)
