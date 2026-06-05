@@ -112,18 +112,20 @@ public class ProfileService {
             return profile;
         }
 
-        // Testing-mode fallback: return an in-memory default profile to avoid null handling crashes.
-        if (TEST_CLERK_ID.equals(clerkId)) {
-            log.warn("No authenticated user/profile found, using fallback clerkId=test-user");
-        } else {
-            log.warn("Profile not found for clerkId={}, returning default profile for safe handling", clerkId);
-        }
-
-        return ProfileDocument.builder()
+        // Persist a fallback profile so future requests resolve normally instead of logging repeatedly.
+        ProfileDocument fallbackProfile = ProfileDocument.builder()
                 .clerkId(clerkId)
+                .email(buildFallbackEmail(clerkId))
+                .firstName("")
+                .lastName("")
+                .photoUrl("")
                 .credits(DEFAULT_CREDITS)
                 .createdAt(Instant.now())
                 .build();
+
+        ProfileDocument savedProfile = profileRepository.save(fallbackProfile);
+        log.info("Created fallback profile for clerkId={} to keep profile-dependent flows working", clerkId);
+        return savedProfile;
     }
 
     private String resolveCurrentClerkId() {
@@ -138,5 +140,10 @@ public class ProfileService {
         }
 
         return clerkId;
+    }
+
+    private String buildFallbackEmail(String clerkId) {
+        String sanitizedClerkId = clerkId == null ? TEST_CLERK_ID : clerkId.replaceAll("[^a-zA-Z0-9._-]", "_");
+        return sanitizedClerkId + "@cloudshare.local";
     }
 }
