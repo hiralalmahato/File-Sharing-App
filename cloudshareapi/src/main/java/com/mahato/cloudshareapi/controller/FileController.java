@@ -58,13 +58,14 @@ public class FileController {
         return ResponseEntity.ok(file);
     }
     @GetMapping("/download/{id}")
-    public ResponseEntity<Resource> download(@PathVariable String id) throws IOException {
+    public ResponseEntity<?> download(@PathVariable String id) {
         FileMetadataDTO downloadableFile = fileMetadataService.getDownloadableFile(id);
-        Resource resource = fileMetadataService.getFileResource(downloadableFile.getFileLocation());
-        return ResponseEntity.ok()
-                .contentType(MediaType.APPLICATION_OCTET_STREAM)
-                .header(HttpHeaders.CONTENT_DISPOSITION,"attachment; filename = \"" + downloadableFile.getName()+"\"")
-                .body(resource);
+        // Redirect to the actual file location (Cloudinary). This avoids proxying remote resources
+        // and prevents potential streaming errors from the server. The browser will follow the
+        // redirect and download the file directly from the storage provider.
+        return ResponseEntity.status(302)
+                .header(HttpHeaders.LOCATION, downloadableFile.getFileLocation())
+                .build();
     }
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteFile(@PathVariable String id){

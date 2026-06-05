@@ -41,27 +41,13 @@ const PublicFileView = () => {
     }, [fileId, getToken]);
 
     const handleDownload = async () => {
-        try {
-            // This endpoint might also require a token depending on your backend setup
-            const response = await axios.get(
-                apiEndpoints.DOWNLOAD_FILE(fileId),
-                {
-                    responseType: "blob",
-                }
-            );
-
-            const url = window.URL.createObjectURL(new Blob([response.data]));
-            const link = document.createElement("a");
-            link.href = url;
-            link.setAttribute("download", file.name); // Use the actual file name
-            document.body.appendChild(link);
-            link.click();
-            link.remove();
-            window.URL.revokeObjectURL(url); // Clean up the object URL
-        } catch (err) {
-            console.error("Download failed:", err);
+        if (!fileId) {
             toast.error("Sorry, the file could not be downloaded.");
+            return;
         }
+
+        // Open backend download endpoint which redirects to the storage provider.
+        window.open(apiEndpoints.DOWNLOAD_FILE(fileId), '_blank', 'noopener,noreferrer');
     };
 
     const openShareModal = () => {
