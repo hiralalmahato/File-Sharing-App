@@ -132,6 +132,20 @@ public class FileMetadataService {
         return mapToDTO(file);
     }
 
+    public String getSignedUrlForDownload(String fileId) {
+        FileMetadataDocument file = fileMetadataRepository.findById(fileId)
+                .orElseThrow(() -> new RuntimeException("File not found"));
+
+        String signedUrl = buildSignedCloudinaryUrl(file);
+        if (signedUrl == null || signedUrl.isBlank()) {
+            // fallback to stored fileLocation (may be public)
+            return file.getFileLocation();
+        }
+
+        // Prefer attachment variant so browser downloads the file
+        return getDownloadableFileUrl(signedUrl);
+    }
+
     public String getDownloadableFileUrl(String fileUrl) {
         if (fileUrl == null || fileUrl.isBlank()) {
             throw new IllegalArgumentException("File URL is missing");

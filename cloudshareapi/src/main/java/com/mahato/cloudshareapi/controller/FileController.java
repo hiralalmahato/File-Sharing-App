@@ -96,6 +96,22 @@ public class FileController {
             return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(Map.of("error", "Unable to fetch file from storage"));
         }
     }
+    @GetMapping("/signed-url/{id}")
+    public ResponseEntity<?> signedUrl(@PathVariable String id) {
+        try {
+            String url = fileMetadataService.getSignedUrlForDownload(id);
+            if (url == null || url.isBlank()) {
+                return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(Map.of("error", "Unable to build download URL"));
+            }
+            return ResponseEntity.ok(Map.of("url", url));
+        } catch (RuntimeException ex) {
+            log.error("Signed URL generation failed for id {}: {}", id, ex.getMessage(), ex);
+            if (ex.getMessage() != null && ex.getMessage().toLowerCase().contains("file not found")) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", ex.getMessage()));
+            }
+            return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(Map.of("error", "Unable to build download URL"));
+        }
+    }
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteFile(@PathVariable String id){
         fileMetadataService.deleteFile(id);

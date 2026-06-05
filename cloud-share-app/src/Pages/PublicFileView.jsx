@@ -41,26 +41,28 @@ const PublicFileView = () => {
     }, [fileId, getToken]);
 
     const handleDownload = async () => {
-        const downloadUrl = fileId ? apiEndpoints.DOWNLOAD_FILE(fileId) : null;
-
-        if (!downloadUrl) {
+        if (!fileId) {
             toast.error("Sorry, the file could not be downloaded.");
             return;
         }
 
         try {
-            const response = await axios.get(downloadUrl, {
-                responseType: 'blob'
-            });
+            const res = await axios.get(apiEndpoints.SIGNED_URL(fileId));
+            const url = res.data?.url;
+            if (url) {
+                window.location.href = url;
+                return;
+            }
 
-            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const response = await axios.get(apiEndpoints.DOWNLOAD_FILE(fileId), { responseType: 'blob' });
+            const blobUrl = window.URL.createObjectURL(new Blob([response.data]));
             const link = document.createElement('a');
-            link.href = url;
+            link.href = blobUrl;
             link.setAttribute('download', file?.name || 'download');
             document.body.appendChild(link);
             link.click();
             link.remove();
-            window.URL.revokeObjectURL(url);
+            window.URL.revokeObjectURL(blobUrl);
         } catch (err) {
             console.error("Download failed:", err);
             toast.error("Sorry, the file could not be downloaded.");
