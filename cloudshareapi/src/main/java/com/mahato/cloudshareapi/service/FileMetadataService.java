@@ -266,6 +266,11 @@ public class FileMetadataService {
         String format = resolveFormat(file.getName(), file.getFileLocation());
         Integer version = resolveVersion(file.getFileLocation());
 
+        // PDFs should be delivered as raw resource type to avoid Cloudinary ACL/signature issues
+        if (format != null && format.equalsIgnoreCase("pdf")) {
+            resourceType = "raw";
+        }
+
         var urlBuilder = cloudinary.url()
                 .signed(true)
                 .resourceType(resourceType)
