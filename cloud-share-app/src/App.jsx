@@ -3,6 +3,7 @@ import Landing from "./Pages/Landing.jsx"
 import Dashboard from "./Pages/Dashboard.jsx"
 import Upload from "./Pages/Upload.jsx"
 import MyFiles from "./Pages/MyFiles.jsx"
+import PublicFileView from "./Pages/PublicFileView.jsx"
 import Subscription from "./Pages/Subscription.jsx"
 import Transactions from "./Pages/Transactions.jsx"
 import {RedirectToSignIn, SignedIn, SignedOut} from "@clerk/clerk-react";
@@ -34,6 +35,7 @@ const App=()=>{
                             <SignedOut><RedirectToSignIn /></SignedOut>
                         </>
                     } />
+                    <Route path="/public/:fileId" element={<PublicFileView />} />
                     <Route path="/subscriptions" element={
                         <>
                             <SignedIn><Subscription /></SignedIn>

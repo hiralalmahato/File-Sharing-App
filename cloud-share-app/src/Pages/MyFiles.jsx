@@ -19,6 +19,9 @@ const MyFiles = () => {
         isOpen: false,
         fileId: null
     });
+
+    const getPublicFileLink = (fileId) => `${window.location.origin}/public/${fileId}`;
+
     //fetching the files for a logged in user
     const fetchFiles = async () => {
         try {
@@ -69,21 +72,32 @@ const MyFiles = () => {
     }
 
     const handleViewFile = (file) => {
-        if (!file?.url) {
+        if (!file?.id) {
             toast.error("Unable to load data");
             return;
         }
-        window.open(file.url, "_blank", "noopener,noreferrer");
+
+        if (file.isPublic) {
+            navigate(`/public/${file.id}`);
+            return;
+        }
+
+        if (file.url) {
+            window.open(file.url, "_blank", "noopener,noreferrer");
+            return;
+        }
+
+        toast.error("Unable to load data");
     };
 
     const handleShareLink = async (file) => {
-        if (!file?.url) {
-            toast.error("Unable to load data");
+        if (!file?.isPublic || !file?.id) {
+            toast.error("Make the file public before sharing it.");
             return;
         }
 
         try {
-            await navigator.clipboard.writeText(file.url);
+            await navigator.clipboard.writeText(getPublicFileLink(file.id));
             toast.success("Link copied!");
         } catch (error) {
             toast.error("Unable to copy link");
