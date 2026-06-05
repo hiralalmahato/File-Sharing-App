@@ -60,11 +60,11 @@ public class FileController {
     @GetMapping("/download/{id}")
     public ResponseEntity<?> download(@PathVariable String id) {
         FileMetadataDTO downloadableFile = fileMetadataService.getDownloadableFile(id);
-        // Redirect to the actual file location (Cloudinary). This avoids proxying remote resources
-        // and prevents potential streaming errors from the server. The browser will follow the
-        // redirect and download the file directly from the storage provider.
+        String downloadUrl = fileMetadataService.getDownloadableFileUrl(downloadableFile.getFileLocation());
+        // Redirect to Cloudinary in attachment mode so PDFs and other files download instead of
+        // opening in the browser's built-in viewer.
         return ResponseEntity.status(302)
-                .header(HttpHeaders.LOCATION, downloadableFile.getFileLocation())
+            .header(HttpHeaders.LOCATION, downloadUrl)
                 .build();
     }
     @DeleteMapping("/{id}")

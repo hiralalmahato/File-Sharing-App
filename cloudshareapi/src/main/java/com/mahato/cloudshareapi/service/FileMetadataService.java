@@ -126,6 +126,24 @@ public class FileMetadataService {
         FileMetadataDocument file = fileMetadataRepository.findById(id).orElseThrow(() ->new RuntimeException("File not found"));
         return mapToDTO(file);
     }
+
+    public String getDownloadableFileUrl(String fileUrl) {
+        if (fileUrl == null || fileUrl.isBlank()) {
+            throw new IllegalArgumentException("File URL is missing");
+        }
+
+        if (fileUrl.contains("/fl_attachment/")) {
+            return fileUrl;
+        }
+
+        int uploadIndex = fileUrl.indexOf("/upload/");
+        if (uploadIndex < 0) {
+            return fileUrl;
+        }
+
+        return fileUrl.replace("/upload/", "/upload/fl_attachment/");
+    }
+
     public void deleteFile(String id){
         try{
             ProfileDocument currentProfile = profileService.getCurrentProfile();
