@@ -7,6 +7,7 @@ import com.mahato.cloudshareapi.document.ProfileDocument;
 import com.mahato.cloudshareapi.dto.FileMetadataDTO;
 import com.mahato.cloudshareapi.repository.FileMetadataRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.http.MediaType;
 import org.springframework.web.multipart.MultipartFile;
@@ -28,6 +29,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class FileMetadataService {
 
 
@@ -198,14 +200,17 @@ public class FileMetadataService {
         String signedUrl = buildSignedCloudinaryUrl(file);
         if (signedUrl != null && !signedUrl.isBlank()) {
             candidateUrls.add(signedUrl);
-            candidateUrls.add(getDownloadableFileUrl(signedUrl));
         }
 
         RuntimeException lastError = null;
         for (String candidateUrl : candidateUrls) {
             try {
-                return fetchBytes(candidateUrl);
+                log.info("Trying Cloudinary download URL: {}", candidateUrl);
+                byte[] bytes = fetchBytes(candidateUrl);
+                log.info("Successfully fetched file bytes from: {}", candidateUrl);
+                return bytes;
             } catch (RuntimeException ex) {
+                log.warn("Failed fetching from URL: {} | Error: {}", candidateUrl, ex.getMessage());
                 lastError = ex;
             }
         }
@@ -263,18 +268,19 @@ public class FileMetadataService {
         }
 
         String resourceType = resolveResourceType(file.getFileLocation(), file.getType());
+        String deliveryType = resolveDeliveryType(file.getFileLocation());
         String format = resolveFormat(file.getName(), file.getFileLocation());
-        Integer version = resolveVersion(file.getFileLocation());
+        Long version = resolveVersion(file.getFileLocation());
 
         // PDFs should be delivered as raw resource type to avoid Cloudinary ACL/signature issues
-        if (format != null && format.equalsIgnoreCase("pdf")) {
-            resourceType = "raw";
-        }
+        // if (format != null && format.equalsIgnoreCase("pdf")) {
+        //     resourceType = "raw";
+        // }
 
         var urlBuilder = cloudinary.url()
                 .signed(true)
                 .resourceType(resourceType)
-                .type("upload");
+                .type(deliveryType);
 
         if (version != null) {
             urlBuilder.version(version);
@@ -289,7 +295,7 @@ public class FileMetadataService {
 
     private String resolveResourceType(String fileUrl, String mimeType) {
         if (fileUrl != null && !fileUrl.isBlank()) {
-            Matcher matcher = Pattern.compile("/(image|video|raw)/upload/").matcher(fileUrl);
+            Matcher matcher = Pattern.compile("/(image|video|raw)/(upload|private|authenticated)/").matcher(fileUrl);
             if (matcher.find()) {
                 return matcher.group(1);
             }
@@ -309,6 +315,16 @@ public class FileMetadataService {
         return "raw";
     }
 
+    private String resolveDeliveryType(String fileUrl) {
+        if (fileUrl != null && !fileUrl.isBlank()) {
+            Matcher matcher = Pattern.compile("/(image|video|raw)/(upload|private|authenticated)/").matcher(fileUrl);
+            if (matcher.find()) {
+                return matcher.group(2);
+            }
+        }
+        return "upload";
+    }
+
     private String resolveFormat(String fileName, String fileUrl) {
         String source = (fileName != null && !fileName.isBlank()) ? fileName : fileUrl;
         if (source == null || source.isBlank() || !source.contains(".")) {
@@ -322,7 +338,7 @@ public class FileMetadataService {
         return extension;
     }
 
-    private Integer resolveVersion(String fileUrl) {
+    private Long resolveVersion(String fileUrl) {
         if (fileUrl == null || fileUrl.isBlank()) {
             return null;
         }
@@ -330,7 +346,7 @@ public class FileMetadataService {
         Matcher matcher = Pattern.compile("/v(\\d+)/").matcher(fileUrl);
         if (matcher.find()) {
             try {
-                return Integer.parseInt(matcher.group(1));
+                return Long.parseLong(matcher.group(1));
             } catch (NumberFormatException ignored) {
                 return null;
             }
