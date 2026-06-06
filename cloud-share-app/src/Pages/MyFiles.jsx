@@ -54,6 +54,27 @@ const MyFiles = () => {
             } catch (e) {
                 // ignore if CustomEvent not supported
             }
+
+            // Broadcast to other tabs/windows using BroadcastChannel where available
+            try {
+                if (typeof BroadcastChannel !== 'undefined') {
+                    const bc = new BroadcastChannel('cloudshare-files');
+                    bc.postMessage({ type: 'filePublicToggled', payload: updated });
+                    bc.close();
+                } else {
+                    // Fallback: write to localStorage to trigger storage events in other tabs
+                    const key = 'cloudshare:filePublicToggled';
+                    try {
+                        localStorage.setItem(key, JSON.stringify({ ts: Date.now(), payload: updated }));
+                        // remove soon after to keep storage clean
+                        setTimeout(() => localStorage.removeItem(key), 500);
+                    } catch (err) {
+                        // ignore localStorage errors
+                    }
+                }
+            } catch (err) {
+                // ignore broadcast failures
+            }
         }catch (error) {
             toast.error('Unable to update sharing status.');
         }

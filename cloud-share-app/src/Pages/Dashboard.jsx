@@ -51,13 +51,41 @@ const Dashboard = () => {
 
         // listener to react to sharing toggles from other pages/components
         const handler = async (e) => {
-            // simple strategy: refetch the recent files list so UI stays in sync
             await fetchRecentFiles();
         };
 
+        // in-app single-window events
         window.addEventListener('filePublicToggled', handler);
+
+        // cross-tab: BroadcastChannel (preferred) and localStorage fallback
+        let bc;
+        if (typeof BroadcastChannel !== 'undefined') {
+            try {
+                bc = new BroadcastChannel('cloudshare-files');
+                bc.addEventListener('message', async (msg) => {
+                    if (msg?.data?.type === 'filePublicToggled') {
+                        await fetchRecentFiles();
+                    }
+                });
+            } catch (err) {
+                bc = null;
+            }
+        }
+
+        const storageHandler = async (e) => {
+            if (e.key === 'cloudshare:filePublicToggled') {
+                await fetchRecentFiles();
+            }
+        };
+
+        window.addEventListener('storage', storageHandler);
+
         return () => {
             window.removeEventListener('filePublicToggled', handler);
+            window.removeEventListener('storage', storageHandler);
+            if (bc) {
+                try { bc.close(); } catch (err) {}
+            }
         };
     }, []);
 
