@@ -19,32 +19,46 @@ const Dashboard = () => {
     const { fetchUserCredits } = useContext(UserCreditsContext);
     const MAX_FILES = 5;
 
+    // Fetch recent files helper so it can be called from event listener
+    const fetchRecentFiles = async () => {
+        setLoading(true);
+        try {
+            const res = await axios.get(apiEndpoints.FETCH_FILES);
+
+            // Sort by uploadedAt and take only the 5 most recent files
+            const normalizedFiles = res.data.map((file) => ({
+                ...file,
+                fileName: file.fileName || file.name || "Unnamed file",
+                url: file.url || file.fileLocation || ""
+            }));
+
+            const sortedFiles = normalizedFiles.sort((a, b) =>
+                new Date(b.uploadedAt) - new Date(a.uploadedAt)
+            ).slice(0, 5);
+            setFiles(sortedFiles);
+            setDataError('');
+        } catch (error) {
+            setFiles([]);
+            setDataError('Unable to load data');
+        } finally {
+            setLoading(false);
+        }
+    };
+
     useEffect(() => {
-        const fetchRecentFiles = async () => {
-            setLoading(true);
-            try {
-                const res = await axios.get(apiEndpoints.FETCH_FILES);
-
-                // Sort by uploadedAt and take only the 5 most recent files
-                const normalizedFiles = res.data.map((file) => ({
-                    ...file,
-                    fileName: file.fileName || file.name || "Unnamed file",
-                    url: file.url || file.fileLocation || ""
-                }));
-
-                const sortedFiles = normalizedFiles.sort((a, b) =>
-                    new Date(b.uploadedAt) - new Date(a.uploadedAt)
-                ).slice(0, 5);
-                setFiles(sortedFiles);
-                setDataError('');
-            } catch (error) {
-                setFiles([]);
-                setDataError('Unable to load data');
-            } finally {
-                setLoading(false);
-            }
-        };
+        // initial load
         fetchRecentFiles();
+
+        // listener to react to sharing toggles from other pages/components
+        const handler = async (e) => {
+            // simple strategy: refetch the recent files list so UI stays in sync
+            await fetchRecentFiles();
+        };
+
+        window.addEventListener('filePublicToggled', handler);
+        return () => {
+            window.removeEventListener('filePublicToggled', handler);
+        };
     }, []);
 
     const handleFileChange = (e) => {

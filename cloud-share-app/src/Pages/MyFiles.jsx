@@ -48,6 +48,12 @@ const MyFiles = () => {
             const res = await axios.patch(apiEndpoints.TOGGLE_FILE(fileToUpdate.id), {});
             const updated = res.data;
             setFiles(files.map((file) => file.id === fileToUpdate.id ? {...file, ...updated} : file));
+            // Notify other parts of the app (e.g., Dashboard) about the change
+            try {
+                window.dispatchEvent(new CustomEvent('filePublicToggled', { detail: updated }));
+            } catch (e) {
+                // ignore if CustomEvent not supported
+            }
         }catch (error) {
             toast.error('Unable to update sharing status.');
         }
